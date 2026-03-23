@@ -20,7 +20,7 @@ const PriceRow = React.memo(({ symbol }: { symbol: string }) => {
 });
 
 export const MarketDashboard = () => {
-  useMarketDataStream('ws://localhost:8080/v1/feed'); // Custom Hook
+  useMarketDataStream('wss://fpga-hft-data-generator-production.up.railway.app/v1/feed'); // Custom Hook
 
   return (
     <div className="dashboard">
