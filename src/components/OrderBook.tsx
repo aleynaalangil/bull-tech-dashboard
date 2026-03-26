@@ -15,9 +15,10 @@ export const OrderBook = ({symbol}: { symbol: string }) => {
         );
     }
 
-    const {best_bid, spread} = data.bbo;
+    const {best_bid, best_ask, spread} = data.bbo;
 
     const bPrice = best_bid.dividedBy(FIXED_POINT_SCALE);
+    const aPrice = best_ask.dividedBy(FIXED_POINT_SCALE);
     const actualSpread = spread.dividedBy(FIXED_POINT_SCALE).toFixed(3);
 
     const asks = data.bbo.asks.map(level => {
@@ -70,13 +71,16 @@ export const OrderBook = ({symbol}: { symbol: string }) => {
                 {/* Spread / Mark Price Center */}
                 <div
                     className="flex items-center justify-between px-3 py-2 bg-[#181824] shrink-0 border-y border-[#1e1e2e]">
-                    <span className="text-lg font-bold text-green-400 drop-shadow-[0_0_2px_rgba(74,222,128,0.5)]">
-      {bPrice.toFormat(2)}
-  </span>
-                    <div className="flex flex-col items-end">
+                    <span className="text-base font-bold text-green-400 drop-shadow-[0_0_2px_rgba(74,222,128,0.5)] font-mono">
+                        {bPrice.toFormat(2)}
+                    </span>
+                    <div className="flex flex-col items-center">
                         <span className="text-[9px] text-slate-500 uppercase tracking-wider">Spread</span>
-                        <span className="text-[11px] text-slate-300 font-mono line-clamp-1">{actualSpread}</span>
+                        <span className="text-[11px] text-slate-300 font-mono">{actualSpread}</span>
                     </div>
+                    <span className="text-base font-bold text-red-400 drop-shadow-[0_0_2px_rgba(248,113,113,0.5)] font-mono">
+                        {aPrice.toFormat(2)}
+                    </span>
                 </div>
 
                 {/* Bids (Green) */}

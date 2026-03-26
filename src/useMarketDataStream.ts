@@ -109,6 +109,7 @@ export const useMarketDataStream = (url: string) => {
                         symbol: sym,
                         price: toBN(raw.price),
                         volume: toBN(raw.volume),
+                        change_1h:  raw.change_1h  !== undefined ? toBN(raw.change_1h)  : undefined,
                         change_24h: raw.change_24h !== undefined ? toBN(raw.change_24h) : undefined,
                     };
 

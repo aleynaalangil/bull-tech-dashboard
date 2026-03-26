@@ -5,7 +5,7 @@
 *::before,
 *::after {
     margin: 0;
-    padding: 0;
+    padding: revert-layer;
     box-sizing: border-box;
 }
 
@@ -17,10 +17,12 @@
     --text-primary: #e4e4ef;
     --text-secondary: #7a7a8e;
     --accent-green: #00e676;
-    --accent-red: #ff1744;
-    --accent-blue: #448aff;
+    --accent-purple: #9c27b0;
+    --accent-amber: #ffb300;
     --glow-green: rgba(0, 230, 118, 0.15);
     --glow-red: rgba(255, 23, 68, 0.15);
+    --glow-blue: rgba(68, 138, 255, 0.15);
+    --glow-purple: rgba(156, 39, 176, 0.15);
 }
 
 body {
@@ -93,10 +95,13 @@ body {
 }
 
 @keyframes pulse-anim {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
         transform: scale(1);
     }
+
     50% {
         opacity: 0.4;
         transform: scale(0.7);
@@ -109,6 +114,7 @@ body {
         background-color: var(--glow-green);
         text-shadow: 0 0 12px var(--accent-green);
     }
+
     100% {
         background-color: transparent;
         text-shadow: none;
@@ -120,6 +126,7 @@ body {
         background-color: var(--glow-red);
         text-shadow: 0 0 12px var(--accent-red);
     }
+
     100% {
         background-color: transparent;
         text-shadow: none;
@@ -127,13 +134,46 @@ body {
 }
 
 .flash-up {
-    animation: flash-green 0.3s ease-out;
+    animation: flash-green 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 4px;
 }
 
 .flash-down {
-    animation: flash-red 0.3s ease-out;
+    animation: flash-red 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 4px;
+}
+
+/* ─── Metric Cards ─── */
+.metric-card {
+    display: flex;
+    flex-direction: column;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    min-width: 100px;
+    transition: all 0.2s ease;
+}
+
+.metric-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.metric-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.metric-value {
+    font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+    font-size: 0.9rem;
+    font-weight: 600;
 }
 
 /* ─── Dashboard ─── */
@@ -233,4 +273,155 @@ body {
     font-size: 0.8rem;
     color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
+}
+
+/* ─── Quick Amount Buttons ─── */
+.quick-amount-btn {
+    flex: 1;
+    padding: 4px 0;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 4px;
+    transition: all 0.15s ease;
+    cursor: pointer;
+}
+
+.quick-amount-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.quick-amount-btn.active {
+    background: var(--accent-blue);
+    color: white;
+    border-color: var(--accent-blue);
+}
+
+/* ─── Trade Inputs ─── */
+.trade-input-group {
+    position: relative;
+    width: 100%;
+}
+
+.trade-input-label {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    pointer-events: none;
+}
+
+.trade-input-suffix {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.trade-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 10px 44px 10px 48px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+    text-align: right;
+    outline: none;
+    transition: all 0.15s ease;
+    font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+}
+
+.trade-input:focus {
+    border-color: var(--accent-blue);
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 2px rgba(68, 138, 255, 0.1);
+}
+
+.trade-input.buy-focus:focus {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 2px rgba(0, 230, 118, 0.1);
+}
+
+.trade-input.sell-focus:focus {
+    border-color: var(--accent-red);
+    box-shadow: 0 0 0 2px rgba(255, 23, 68, 0.1);
+}
+
+/* ─── Market Sidebar ─── */
+.market-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+}
+
+.market-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.market-item.active {
+    background: rgba(68, 138, 255, 0.08);
+    border-color: rgba(68, 138, 255, 0.2);
+}
+
+.market-symbol-text {
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.market-price-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-align: right;
+}
+
+.market-change-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-align: right;
+    min-width: 55px;
+}
+
+.market-change-badge.up {
+    color: var(--accent-green);
+    background: rgba(0, 230, 118, 0.1);
+}
+
+.market-change-badge.down {
+    color: var(--accent-red);
+    background: rgba(255, 23, 68, 0.1);
+}
+
+/* ─── Scrollbar ─── */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
 }

@@ -1,10 +1,10 @@
-import {useTradeStore} from '../store';
-import {useEffect, useRef, useState} from 'react';
+import { useTradeStore } from '../store';
+import { useEffect, useRef, useState } from 'react';
 import BigNumber from 'bignumber.js';
 
 type FlashDirection = 'flash-up' | 'flash-down' | '';
 
-export const TopTickerBar = ({symbol}: { symbol: string }) => {
+export const TopTickerBar = ({ symbol }: { symbol: string }) => {
     const data = useTradeStore((state) => state.prices[symbol]);
 
     // ── Price-flash animation ───────────────────────────────────────────────
@@ -43,76 +43,82 @@ export const TopTickerBar = ({symbol}: { symbol: string }) => {
     }, [data?.price]);
 
     // ── Early return for loading state ─────────────────────────────────────
-    if (!data) return <div className="h-16 border-b border-[#1e1e2e] bg-[#12121a]"/>;
+    if (!data) return <div className="h-16 border-b border-[#1e1e2e] bg-[#12121a]" />;
 
     const priceStr = data.price.toFormat(2);
     const volStr = data.volume.multipliedBy(data.price).dividedBy(1_000).toFormat(2) + 'K';
 
-    const {latency, throughput_tps, error_rate} = data.telemetry ?? {
+    const { latency, throughput_tps, error_rate } = data.telemetry ?? {
         latency: null,
         throughput_tps: null,
         error_rate: null,
     };
 
     return (
-        <div
-            className="h-20 shrink-0 border-b border-[#1e1e2e] bg-[#12121a] flex items-center px-4 md:px-6 justify-between">
-            <div className="flex items-center gap-6 md:gap-8">
-
-                {/* Symbol */}
-                <div className="flex flex-col">
-                    <span className="text-lg font-bold tracking-tight text-white drop-shadow-md">{symbol}</span>
+        <div className="h-24 shrink-0 border-b border-[#1e1e2e] bg-[#0d0d12] flex items-center px-[2vw] justify-between overflow-x-auto no-scrollbar gap-4">
+            <div className="flex items-center gap-4">
+                {/* Symbol Card */}
+                <div className="flex flex-col pr-4 border-r border-[#1e1e2e]">
+                    <span className="text-xl font-black tracking-tighter text-white uppercase">{symbol}</span>
                 </div>
 
-                {/* Live price with up/down flash */}
-                <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Price</span>
-                    <span
-                        className={`text-green-400 font-bold font-mono text-base px-1 -mx-1 transition-colors ${flashClass}`}>
-                        {priceStr}
-                    </span>
-                </div>
+                <div className="flex items-center gap-3">
+                    {/* Price Card */}
+                    <div className="metric-card">
+                        <span className="metric-label">Last Price</span>
+                        <span className={`metric-value text-green-400 text-lg transition-all ${flashClass}`}>
+                            ${priceStr}
+                        </span>
+                    </div>
 
-                {/* 24h change */}
-                <div className="hidden sm:flex flex-col">
-                    <span
-                        className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">24h Change</span>
-                    <span
-                        className={`${(data.change_24h?.gte(0) ?? true) ? 'text-green-400' : 'text-red-400'} font-mono font-medium`}>
-                        {data.change_24h
-                            ? `${data.change_24h.gt(0) ? '+' : ''}${data.change_24h.toFormat(2)}%`
-                            : '0.00%'}
-                    </span>
-                </div>
+                    {/* 24h Change Card */}
+                    <div className="metric-card">
+                        <span className="metric-label">24h Change</span>
+                        <div className="flex items-center gap-1">
+                            <span className={`metric-value ${data.change_24h?.gte(0) ? 'text-green-400' : 'text-red-400'}`}>
+                                {data.change_24h?.gte(0) ? '▲' : '▼'} {data.change_24h ? `${data.change_24h.abs().toFormat(2)}%` : '0.00%'}
+                            </span>
+                        </div>
+                    </div>
 
-                {/* 24h volume */}
-                <div className="hidden lg:flex flex-col">
-                    <span
-                        className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">24h Volume</span>
-                    <span className="text-slate-200 font-mono font-medium">{volStr}</span>
+                    {/* 1h Change Card */}
+                    <div className="metric-card">
+                        <span className="metric-label">1h Change</span>
+                        <div className="flex items-center gap-1">
+                            <span className={`metric-value ${data.change_1h?.gte(0) ? 'text-green-400' : 'text-red-400'}`}>
+                                {data.change_1h?.gte(0) ? '▲' : '▼'} {data.change_1h ? `${data.change_1h.abs().toFormat(2)}%` : '0.00%'}
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* 24h Volume Card */}
+                    <div className="metric-card hidden lg:flex">
+                        <span className="metric-label">24h Volume (USDC)</span>
+                        <span className="metric-value text-slate-200">{volStr}</span>
+                    </div>
                 </div>
             </div>
 
             {/* Technical diagnostics */}
-            <div className="hidden xl:flex items-center gap-4 md:gap-6 border-l border-[#1e1e2e] pl-4 md:pl-6">
-                <div className="flex flex-col">
-                    <span
-                        className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Avg Latency</span>
-                    <span
-                        className={`font-mono text-sm font-medium ${latency && latency.toNumber() > 50 ? 'text-red-400 drop-shadow-[0_0_4px_rgba(239,68,68,0.5)]' : 'text-green-400'}`}>
-                        {latency ? latency.toFixed(2) : '0.00'} ms
+            <div className="flex items-center gap-3">
+                <div className="metric-card border-blue-500/10 bg-blue-500/5">
+                    <span className="metric-label text-blue-400/70">Avg Latency</span>
+                    <span className={`metric-value ${latency && latency.toNumber() > 50 ? 'text-red-400' : 'text-blue-400'}`}>
+                        {latency ? latency.toFixed(2) : '0.00'} <span className="text-[10px] opacity-70">ms</span>
                     </span>
                 </div>
-                <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Tick TPS</span>
-                    <span className="text-blue-400 font-mono text-sm font-medium">
-                        {throughput_tps ? throughput_tps.toNumber().toLocaleString() : '0'}
+
+                <div className="metric-card border-green-500/10 bg-green-500/5">
+                    <span className="metric-label text-green-400/70">Throughput</span>
+                    <span className="metric-value text-green-400">
+                        {throughput_tps ? throughput_tps.toNumber().toLocaleString() : '0'} <span className="text-[10px] opacity-70">TPS</span>
                     </span>
                 </div>
-                <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Err Rate</span>
-                    <span className="text-purple-400 font-mono text-sm font-medium">
-                        {error_rate ? error_rate.multipliedBy(100).toFixed(3) : '0.000'}%
+
+                <div className="metric-card border-purple-500/10 bg-purple-500/5">
+                    <span className="metric-label text-purple-400/70">Error Rate</span>
+                    <span className="metric-value text-purple-400">
+                        {error_rate ? error_rate.multipliedBy(100).toFixed(3) : '0.000'}<span className="text-[10px] opacity-70">%</span>
                     </span>
                 </div>
             </div>
