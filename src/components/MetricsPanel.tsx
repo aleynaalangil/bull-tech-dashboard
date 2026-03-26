@@ -1,11 +1,13 @@
+import { memo } from 'react';
 import { useTradeStore } from '../store';
 
-export const MetricsPanel = ({ symbol }: { symbol: string }) => {
-  const data = useTradeStore((state) => state.prices[symbol]);
+// Granular selector: only re-render when telemetry changes, not on every price tick.
+export const MetricsPanel = memo(({ symbol }: { symbol: string }) => {
+  const telemetry = useTradeStore((state) => state.prices[symbol]?.telemetry);
 
-  if (!data || !data.telemetry) return null;
+  if (!telemetry) return null;
 
-  const { latency, throughput_tps, error_rate } = data.telemetry;
+  const { latency, throughput_tps, error_rate } = telemetry;
 
   return (
     <div className="grid grid-cols-3 gap-4 mb-6">
@@ -29,4 +31,4 @@ export const MetricsPanel = ({ symbol }: { symbol: string }) => {
       </div>
     </div>
   );
-};
+});

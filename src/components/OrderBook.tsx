@@ -1,13 +1,15 @@
+import { memo } from 'react';
 import {useTradeStore} from '../store';
 import BigNumber from 'bignumber.js';
 
 // Fixed-point scaling factor: 10^8 matching the Rust backend
 const FIXED_POINT_SCALE = new BigNumber(100_000_000);
 
-export const OrderBook = ({symbol}: { symbol: string }) => {
-    const data = useTradeStore((state) => state.prices[symbol]);
+// Granular selector: only re-render when BBO data changes, not on every price tick.
+export const OrderBook = memo(({symbol}: { symbol: string }) => {
+    const bbo = useTradeStore((state) => state.prices[symbol]?.bbo);
 
-    if (!data || !data.bbo) {
+    if (!bbo) {
         return (
             <div className="bg-[#12121a] flex-1 flex items-center justify-center text-slate-500 text-sm">
                 Waiting for Level 2 data...
@@ -15,19 +17,19 @@ export const OrderBook = ({symbol}: { symbol: string }) => {
         );
     }
 
-    const {best_bid, best_ask, spread} = data.bbo;
+    const {best_bid, best_ask, spread} = bbo;
 
     const bPrice = best_bid.dividedBy(FIXED_POINT_SCALE);
     const aPrice = best_ask.dividedBy(FIXED_POINT_SCALE);
     const actualSpread = spread.dividedBy(FIXED_POINT_SCALE).toFixed(3);
 
-    const asks = data.bbo.asks.map(level => {
+    const asks = bbo.asks.map(level => {
         const p = level.price.dividedBy(FIXED_POINT_SCALE);
         const s = level.size.dividedBy(FIXED_POINT_SCALE);
         return {price: p, amount: s, total: p.multipliedBy(s)};
     }).reverse();
 
-    const bids = data.bbo.bids.map(level => {
+    const bids = bbo.bids.map(level => {
         const p = level.price.dividedBy(FIXED_POINT_SCALE);
         const s = level.size.dividedBy(FIXED_POINT_SCALE);
         return {price: p, amount: s, total: p.multipliedBy(s)};
@@ -102,4 +104,4 @@ export const OrderBook = ({symbol}: { symbol: string }) => {
             </div>
         </div>
     );
-};
+});

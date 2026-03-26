@@ -41,4 +41,21 @@ export default defineConfig({
     react(),
     ...mockApiPlugin,
   ],
+  server: {
+    proxy: {
+      // Route OHLCV and any other HFT-gateway REST calls through the dev
+      // server so the browser never makes a cross-origin request.
+      // Set VITE_API_URL= (empty) in .env to use these proxy paths.
+      '/api/v1/ohlcv': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      // WebSocket feed — proxy so ws://localhost:5173/v1/feed works in dev.
+      // Set VITE_WS_URL=ws://localhost:5173/v1/feed in .env to use this.
+      '/v1/feed': {
+        target: 'ws://localhost:8080',
+        ws: true,
+      },
+    },
+  },
 })

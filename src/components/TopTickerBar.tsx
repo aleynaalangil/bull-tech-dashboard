@@ -21,6 +21,7 @@ export const TopTickerBar = ({ symbol }: { symbol: string }) => {
 
         if (!current) return;
 
+        /* eslint-disable react-hooks/set-state-in-effect */
         if (prev) {
             if (current.gt(prev)) {
                 setFlashClass('flash-up');
@@ -29,6 +30,7 @@ export const TopTickerBar = ({ symbol }: { symbol: string }) => {
             }
             // Equal price → no flash, no state update
         }
+        /* eslint-enable react-hooks/set-state-in-effect */
 
         prevPriceRef.current = current;
 
@@ -39,7 +41,6 @@ export const TopTickerBar = ({ symbol }: { symbol: string }) => {
         // data?.price is a BigNumber object; using it directly as a dep would
         // always be a new reference. We rely on the store only updating when the
         // value actually changes, so this is safe and intentional.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data?.price]);
 
     // ── Early return for loading state ─────────────────────────────────────
@@ -55,11 +56,11 @@ export const TopTickerBar = ({ symbol }: { symbol: string }) => {
     };
 
     return (
-        <div className="h-24 shrink-0 border-b border-[#1e1e2e] bg-[#0d0d12] flex items-center px-[2vw] justify-between overflow-x-auto no-scrollbar gap-4">
+        <div className="h-16 md:h-24 shrink-0 border-b border-[#1e1e2e] bg-[#0d0d12] flex items-center px-3 md:px-[2vw] justify-between overflow-x-auto no-scrollbar gap-3 md:gap-4">
             <div className="flex items-center gap-4">
                 {/* Symbol Card */}
                 <div className="flex flex-col pr-4 border-r border-[#1e1e2e]">
-                    <span className="text-xl font-black tracking-tighter text-white uppercase">{symbol}</span>
+                    <span className="text-base md:text-xl font-black tracking-tighter text-white uppercase">{symbol}</span>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -75,9 +76,13 @@ export const TopTickerBar = ({ symbol }: { symbol: string }) => {
                     <div className="metric-card">
                         <span className="metric-label">24h Change</span>
                         <div className="flex items-center gap-1">
-                            <span className={`metric-value ${data.change_24h?.gte(0) ? 'text-green-400' : 'text-red-400'}`}>
-                                {data.change_24h?.gte(0) ? '▲' : '▼'} {data.change_24h ? `${data.change_24h.abs().toFormat(2)}%` : '0.00%'}
-                            </span>
+                            {data.change_24h !== undefined ? (
+                                <span className={`metric-value ${data.change_24h.gte(0) ? 'text-green-400' : 'text-red-400'}`}>
+                                    {data.change_24h.gte(0) ? '▲' : '▼'} {data.change_24h.abs().toFormat(2)}%
+                                </span>
+                            ) : (
+                                <span className="metric-value text-slate-500">—</span>
+                            )}
                         </div>
                     </div>
 
@@ -85,9 +90,13 @@ export const TopTickerBar = ({ symbol }: { symbol: string }) => {
                     <div className="metric-card">
                         <span className="metric-label">1h Change</span>
                         <div className="flex items-center gap-1">
-                            <span className={`metric-value ${data.change_1h?.gte(0) ? 'text-green-400' : 'text-red-400'}`}>
-                                {data.change_1h?.gte(0) ? '▲' : '▼'} {data.change_1h ? `${data.change_1h.abs().toFormat(2)}%` : '0.00%'}
-                            </span>
+                            {data.change_1h !== undefined ? (
+                                <span className={`metric-value ${data.change_1h.gte(0) ? 'text-green-400' : 'text-red-400'}`}>
+                                    {data.change_1h.gte(0) ? '▲' : '▼'} {data.change_1h.abs().toFormat(2)}%
+                                </span>
+                            ) : (
+                                <span className="metric-value text-slate-500">—</span>
+                            )}
                         </div>
                     </div>
 
@@ -100,7 +109,7 @@ export const TopTickerBar = ({ symbol }: { symbol: string }) => {
             </div>
 
             {/* Technical diagnostics */}
-            <div className="flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-3">
                 <div className="metric-card border-blue-500/10 bg-blue-500/5">
                     <span className="metric-label text-blue-400/70">Avg Latency</span>
                     <span className={`metric-value ${latency && latency.toNumber() > 50 ? 'text-red-400' : 'text-blue-400'}`}>

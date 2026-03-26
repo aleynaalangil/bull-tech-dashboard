@@ -1,23 +1,76 @@
 import {useEffect, useRef} from 'react';
 import {useTradeStore, type MarketData} from './store';
 import BigNumber from 'bignumber.js';
+import { logger } from './logger';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /**
  * Safely converts any value to a BigNumber.
- * Returns a BigNumber(0) fallback instead of undefined so callers don't need
- * to OR-guard every single usage site.
+ * Uses a type guard instead of a cast so strict mode is satisfied.
  */
 const toBN = (val: unknown, fallback = new BigNumber(0)): BigNumber => {
     if (val === null || val === undefined) return fallback;
-    const bn = new BigNumber(val as string | number);
+    if (typeof val !== 'string' && typeof val !== 'number') return fallback;
+    const bn = new BigNumber(val);
     return bn.isNaN() ? fallback : bn;
 };
+
+// ─── WebSocket message types ─────────────────────────────────────────────────
 
 interface RawOrderBookLevel {
     price: unknown;
     size: unknown;
+}
+
+interface RawBbo {
+    best_bid: unknown;
+    best_ask: unknown;
+    bid_size: unknown;
+    ask_size: unknown;
+    spread: unknown;
+    bids?: RawOrderBookLevel[];
+    asks?: RawOrderBookLevel[];
+    timestamp?: string;
+    symbol?: string;
+}
+
+interface RawTick {
+    price: unknown;
+    amount: unknown;
+    symbol?: string;
+    side?: string;
+    timestamp?: string;
+    order_id?: string;
+    trader_id?: number;
+}
+
+interface RawTelemetry {
+    latency: unknown;
+    throughput_tps: unknown;
+    error_rate: unknown;
+}
+
+interface RawOhlc {
+    candle_time: string;
+    open: unknown;
+    high: unknown;
+    low: unknown;
+    close: unknown;
+    volume: unknown;
+    symbol?: string;
+}
+
+interface WsMessage {
+    symbol: string;
+    price?: unknown;
+    volume?: unknown;
+    change_1h?: unknown;
+    change_24h?: unknown;
+    bbo?: RawBbo;
+    tick?: RawTick;
+    telemetry?: RawTelemetry;
+    ohlc?: RawOhlc;
 }
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -45,6 +98,7 @@ const RECONNECT_MAX_MS = 30_000;
 export const useMarketDataStream = (url: string) => {
     const updatePrice = useTradeStore((state) => state.updatePrice);
     const addAlert = useTradeStore((state) => state.addAlert);
+    const setWsStatus = useTradeStore((state) => state.setWsStatus);
 
     // Buffer holds the *latest* tick per symbol between flush cycles.
     // Only partial updates arrive here; we merge with existing store state
@@ -52,10 +106,16 @@ export const useMarketDataStream = (url: string) => {
     const bufferRef = useRef<Record<string, Partial<MarketData>>>({});
     const lastAlertTime = useRef<Record<string, number>>({});
     const reconnectDelay = useRef(RECONNECT_BASE_MS);
-    const unmounted = useRef(false);
 
     useEffect(() => {
-        unmounted.current = false;
+        // Local closure variable — each effect instance owns its own flag.
+        // Using a ref here is wrong because React 19 StrictMode runs the effect
+        // twice: cleanup of the first run sets unmounted=true, but by the time
+        // the first socket's async onclose fires the second run has already
+        // reset the ref to false, making scheduleReconnect think it should
+        // reconnect on behalf of the (already-dead) first instance.
+        let isMounted = true;
+        reconnectDelay.current = RECONNECT_BASE_MS; // reset backoff on remount
 
         let socket: WebSocket;
         let flushInterval: ReturnType<typeof setInterval>;
@@ -63,8 +123,9 @@ export const useMarketDataStream = (url: string) => {
 
         // ── connect ────────────────────────────────────────────────────────
         const connect = () => {
-            if (unmounted.current) return;
+            if (!isMounted) return;
 
+            setWsStatus('connecting');
             socket = new WebSocket(url);
 
             // ── flush: drain buffer atomically, merge into store ──────────
@@ -101,22 +162,27 @@ export const useMarketDataStream = (url: string) => {
             // ── message handler ───────────────────────────────────────────
             socket.onmessage = (event) => {
                 try {
-                    const raw = JSON.parse(event.data as string);
+                    if (typeof event.data !== 'string') return;
+                    const raw = JSON.parse(event.data) as WsMessage;
                     const sym: string = raw.symbol;
                     if (!sym) return;
 
+                    // Only include change fields when the backend actually sent them.
+                    // Setting change_1h: undefined in a spread overwrites the previously
+                    // stored value with undefined on the next non-change tick.
                     const data: Partial<MarketData> = {
                         symbol: sym,
                         price: toBN(raw.price),
                         volume: toBN(raw.volume),
-                        change_1h:  raw.change_1h  !== undefined ? toBN(raw.change_1h)  : undefined,
-                        change_24h: raw.change_24h !== undefined ? toBN(raw.change_24h) : undefined,
                     };
+                    if (raw.change_1h  !== undefined) data.change_1h  = toBN(raw.change_1h);
+                    if (raw.change_24h !== undefined) data.change_24h = toBN(raw.change_24h);
 
                     // BBO / order-book levels
                     if (raw.bbo) {
                         data.bbo = {
-                            ...raw.bbo,
+                            symbol: sym,
+                            timestamp: raw.bbo.timestamp ?? '',
                             best_bid: toBN(raw.bbo.best_bid),
                             best_ask: toBN(raw.bbo.best_ask),
                             bid_size: toBN(raw.bbo.bid_size),
@@ -136,7 +202,11 @@ export const useMarketDataStream = (url: string) => {
                     // Last trade tick
                     if (raw.tick) {
                         data.tick = {
-                            ...raw.tick,
+                            symbol: sym,
+                            side: raw.tick.side ?? '',
+                            timestamp: raw.tick.timestamp ?? '',
+                            order_id: raw.tick.order_id ?? '',
+                            trader_id: raw.tick.trader_id ?? 0,
                             price: toBN(raw.tick.price),
                             amount: toBN(raw.tick.amount),
                         };
@@ -169,6 +239,7 @@ export const useMarketDataStream = (url: string) => {
                     if (raw.ohlc) {
                         data.ohlc = {
                             ...raw.ohlc,
+                            symbol: sym,
                             open: toBN(raw.ohlc.open),
                             high: toBN(raw.ohlc.high),
                             low: toBN(raw.ohlc.low),
@@ -183,8 +254,8 @@ export const useMarketDataStream = (url: string) => {
                     bufferRef.current[sym] = {...bufferRef.current[sym], ...data};
 
                     // ── unthrottled latency alert (needs raw value) ────────
-                    const rawLat: number | undefined = raw.telemetry?.latency;
-                    if (rawLat !== undefined && rawLat > LATENCY_ALERT_THRESHOLD) {
+                    const rawLat = raw.telemetry?.latency;
+                    if (typeof rawLat === 'number' && rawLat > LATENCY_ALERT_THRESHOLD) {
                         const now = Date.now();
                         if (now - (lastAlertTime.current[sym] ?? 0) > ALERT_COOLDOWN_MS) {
                             addAlert({
@@ -195,14 +266,15 @@ export const useMarketDataStream = (url: string) => {
                         }
                     }
                 } catch (e) {
-                    console.error('WS message parse error:', e, event.data);
+                    logger.error('WS message parse error', { error: String(e), data: event.data });
                 }
             };
 
             // ── reconnect on close / error ────────────────────────────────
             const scheduleReconnect = () => {
-                if (unmounted.current) return;
+                if (!isMounted) return;
                 clearInterval(flushInterval);
+                setWsStatus('reconnecting');
                 reconnectTimer = setTimeout(() => {
                     reconnectDelay.current = Math.min(
                         reconnectDelay.current * 2,
@@ -214,10 +286,12 @@ export const useMarketDataStream = (url: string) => {
 
             socket.onopen = () => {
                 reconnectDelay.current = RECONNECT_BASE_MS;
+                setWsStatus('connected');
             };
-            socket.onerror = (err) => console.error('WebSocket error:', err);
+            socket.onerror = (err) => logger.error('WebSocket error', { error: String(err) });
             socket.onclose = (evt) => {
-                console.warn(`WebSocket closed (code ${evt.code}). Reconnecting in ${reconnectDelay.current} ms…`);
+                if (!isMounted) return; // StrictMode cleanup — don't reconnect
+                logger.warn('WebSocket closed — scheduling reconnect', { code: evt.code, delay: reconnectDelay.current });
                 scheduleReconnect();
             };
         };
@@ -225,10 +299,10 @@ export const useMarketDataStream = (url: string) => {
         connect();
 
         return () => {
-            unmounted.current = true;
+            isMounted = false;
             clearInterval(flushInterval);
             clearTimeout(reconnectTimer);
             socket?.close();
         };
-    }, [url, updatePrice, addAlert]);
+    }, [url, updatePrice, addAlert, setWsStatus]);
 };

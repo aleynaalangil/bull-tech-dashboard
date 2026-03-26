@@ -1,10 +1,37 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MarketDashboard } from './MarketDashboard';
-import { useTradeStore } from './store';
+import { useTradeStore, type WsStatus } from './store';
 import { isLoggedIn, getUser, clearAuth } from './auth';
 import { useNavigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Register from './pages/Register';
+
+// ── WebSocket status badge ─────────────────────────────────────────────────────
+
+function WsStatusBadge({ status }: { status: WsStatus }) {
+  if (status === 'connected') {
+    return (
+      <span className="status-badge">
+        <span className="pulse"></span>
+        Live
+      </span>
+    );
+  }
+  if (status === 'reconnecting') {
+    return (
+      <span className="status-badge" style={{ borderColor: 'rgba(245,158,11,0.3)', background: 'rgba(245,158,11,0.05)', color: '#f59e0b' }}>
+        <span className="pulse" style={{ background: '#f59e0b', boxShadow: '0 0 6px #f59e0b' }}></span>
+        Reconnecting…
+      </span>
+    );
+  }
+  return (
+    <span className="status-badge" style={{ borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)', color: '#ef4444' }}>
+      <span className="pulse" style={{ background: '#ef4444', boxShadow: '0 0 6px #ef4444', animationPlayState: 'paused' }}></span>
+      Connecting…
+    </span>
+  );
+}
 
 // ── Protected route wrapper ───────────────────────────────────────────────────
 
@@ -12,6 +39,7 @@ function ProtectedApp() {
   const navigate = useNavigate();
   const alerts = useTradeStore(state => state.alerts);
   const removeAlert = useTradeStore(state => state.removeAlert);
+  const wsStatus = useTradeStore(state => state.wsStatus);
   const user = getUser();
 
   const handleLogout = () => {
@@ -46,10 +74,7 @@ function ProtectedApp() {
               </button>
             </div>
           )}
-          <span className="status-badge">
-            <span className="pulse"></span>
-            Live
-          </span>
+          <WsStatusBadge status={wsStatus} />
         </div>
       </header>
       <main className="flex-1 overflow-hidden">

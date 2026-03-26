@@ -109,10 +109,13 @@ export interface PendingOrder {
 
 // ── Store interface ───────────────────────────────────────────────────────────
 
+export type WsStatus = 'connecting' | 'connected' | 'reconnecting';
+
 interface TradeStore {
     // Ephemeral (not persisted)
     prices: Record<string, MarketData>;
     alerts: Alert[];
+    wsStatus: WsStatus;
 
     // Persisted across page refreshes
     priceAlerts: PriceAlert[];
@@ -127,6 +130,9 @@ interface TradeStore {
     addPendingOrder: (order: Omit<PendingOrder, 'id' | 'createdAt'>) => void;
     removePendingOrder: (id: string) => void;
     updatePendingOrderStatus: (id: string, status: PendingOrder['status']) => void;
+    clearPendingOrders: (symbol?: string) => void;
+    clearPriceAlerts: (symbol?: string) => void;
+    setWsStatus: (status: WsStatus) => void;
 }
 
 // ── Store ─────────────────────────────────────────────────────────────────────
@@ -139,6 +145,7 @@ export const useTradeStore = create<TradeStore>()(
         (set) => ({
             prices: {},
             alerts: [],
+            wsStatus: 'connecting' as WsStatus,
             priceAlerts: [],
             pendingOrders: [],
 
@@ -205,6 +212,22 @@ export const useTradeStore = create<TradeStore>()(
                         o.id === id ? { ...o, status } : o,
                     ),
                 })),
+
+            clearPendingOrders: (symbol) =>
+                set((state) => ({
+                    pendingOrders: symbol
+                        ? state.pendingOrders.filter((o) => o.symbol !== symbol)
+                        : [],
+                })),
+
+            clearPriceAlerts: (symbol) =>
+                set((state) => ({
+                    priceAlerts: symbol
+                        ? state.priceAlerts.filter((a) => a.symbol !== symbol)
+                        : [],
+                })),
+
+            setWsStatus: (status) => set({ wsStatus: status }),
         }),
         {
             name: 'bull-tech-store',

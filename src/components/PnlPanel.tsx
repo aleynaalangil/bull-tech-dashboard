@@ -50,6 +50,7 @@ export const PnlPanel = () => {
   const [stats, setStats] = useState<PnlStats | null>(null);
   const [filter, setFilter] = useState<OrderTypeFilter>('all');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchPnl = async () => {
     try {
@@ -62,9 +63,13 @@ export const PnlPanel = () => {
       if (res.ok) {
         const data = await res.json();
         setStats(data);
+        setError(null);
+      } else {
+        setError('P&L data unavailable');
       }
     } catch (err) {
       console.error('[PnlPanel] Fetch error:', err);
+      setError('P&L data unavailable');
     } finally {
       setLoading(false);
     }
@@ -74,6 +79,8 @@ export const PnlPanel = () => {
     fetchPnl();
     const interval = setInterval(fetchPnl, 10000);
     return () => clearInterval(interval);
+    // fetchPnl is defined inside the component but never changes — safe to omit
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (loading && !stats) {
@@ -82,6 +89,22 @@ export const PnlPanel = () => {
         <div className="flex flex-col items-center gap-3">
           <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
           <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Loading P&L...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!stats && error) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">{error}</span>
+          <button
+            onClick={fetchPnl}
+            className="text-[10px] font-bold text-slate-400 hover:text-slate-200 border border-[#1e1e2e] rounded px-3 py-1.5 transition-colors uppercase tracking-widest"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -119,11 +142,33 @@ export const PnlPanel = () => {
         </div>
       </div>
 
+      {/* ── Stale-data error banner ──────────────────────────────────────── */}
+      {error && stats && (
+        <div className="flex items-center justify-between px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-red-400 text-[10px] font-bold shrink-0">
+          <span>{error}</span>
+          <button
+            onClick={fetchPnl}
+            className="ml-4 underline underline-offset-2 hover:text-red-300 transition-colors uppercase tracking-widest"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto no-scrollbar p-4 flex flex-col gap-6">
         {/* ── Realized P&L Breakdown ─────────────────────────────────────── */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Realized Breakdown</span>
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Realized Breakdown</span>
+              <button
+                onClick={fetchPnl}
+                title="Refresh P&L"
+                className="text-slate-600 hover:text-slate-300 transition-colors text-[11px] leading-none"
+              >
+                ↻
+              </button>
+            </div>
             <div className="flex gap-1 bg-white/5 p-1 rounded-md">
               {(['all', 'market', 'limit', 'stop_limit'] as OrderTypeFilter[]).map((t) => (
                 <button

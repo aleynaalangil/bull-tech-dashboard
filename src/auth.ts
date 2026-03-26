@@ -31,10 +31,17 @@ export function isLoggedIn(): boolean {
   return !!getToken();
 }
 
-/** Base URL for the exchange-sim API */
+/**
+ * Base URL for the exchange-sim API.
+ * In production with Vercel rewrites set VITE_EXCHANGE_URL= (empty).
+ * authFetch will use relative paths (/api/...) which vercel.json rewrites
+ * to the exchange-sim backend. Set to a full URL in local dev.
+ */
 export const EXCHANGE_URL: string = (() => {
   const url = import.meta.env.VITE_EXCHANGE_URL as string | undefined;
-  if (!url) throw new Error('VITE_EXCHANGE_URL is not set');
+  // Allow empty string — means "use relative paths (Vercel rewrite mode)".
+  // Only throw if the variable is entirely absent from the .env file.
+  if (url === undefined) throw new Error('VITE_EXCHANGE_URL is not set in .env');
   return url;
 })();
 
