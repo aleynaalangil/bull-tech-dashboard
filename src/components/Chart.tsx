@@ -254,13 +254,13 @@ export const Chart = ({ symbol }: { symbol: string }) => {
                 >
                     <div className="mb-1 text-[#94a3b8]">{tooltip.time}</div>
                     <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
-                        <span className="text-[#94a3b8]">O</span>
+                        <span className="text-[#94a3b8]">Open:</span>
                         <span className="text-right font-mono text-white">{tooltip.open.toFixed(2)}</span>
-                        <span className="text-[#94a3b8]">H</span>
+                        <span className="text-[#94a3b8]">High:</span>
                         <span className="text-right font-mono text-[#4ade80]">{tooltip.high.toFixed(2)}</span>
-                        <span className="text-[#94a3b8]">L</span>
+                        <span className="text-[#94a3b8]">Low:</span>
                         <span className="text-right font-mono text-[#f87171]">{tooltip.low.toFixed(2)}</span>
-                        <span className="text-[#94a3b8]">C</span>
+                        <span className="text-[#94a3b8]">Close:</span>
                         <span className={`text-right font-mono ${isUp ? 'text-[#4ade80]' : 'text-[#f87171]'}`}>
                             {tooltip.close.toFixed(2)}
                         </span>
