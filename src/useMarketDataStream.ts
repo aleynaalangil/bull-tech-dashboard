@@ -175,8 +175,8 @@ export const useMarketDataStream = (url: string) => {
                         price: toBN(raw.price),
                         volume: toBN(raw.volume),
                     };
-                    if (raw.change_1h  !== undefined) data.change_1h  = toBN(raw.change_1h);
-                    if (raw.change_24h !== undefined) data.change_24h = toBN(raw.change_24h);
+                    if (raw.change_1h  != null) data.change_1h  = toBN(raw.change_1h);
+                    if (raw.change_24h != null) data.change_24h = toBN(raw.change_24h);
 
                     // BBO / order-book levels
                     if (raw.bbo) {

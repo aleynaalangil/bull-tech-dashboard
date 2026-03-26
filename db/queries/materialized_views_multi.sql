@@ -90,16 +90,16 @@ GROUP BY symbol, candle_time;
 -- To backfill historical data into each MV, run an INSERT...SELECT from the
 -- historical_trades table using the same GROUP BY logic:
 --
--- INSERT INTO hft_dashboard.historical_trades_mv_5m
--- SELECT
---     symbol,
---     toStartOfInterval(timestamp, INTERVAL 5 MINUTE) AS candle_time,
---     argMinState(price, timestamp),
---     maxState(price),
---     minState(price),
---     argMaxState(price, timestamp),
---     sumState(amount)
--- FROM hft_dashboard.historical_trades
--- GROUP BY symbol, candle_time;
+INSERT INTO hft_dashboard.historical_trades_mv_5m
+SELECT
+    symbol,
+    toStartOfInterval(timestamp, INTERVAL 5 MINUTE) AS candle_time,
+    argMinState(price, timestamp),
+    maxState(price),
+    minState(price),
+    argMaxState(price, timestamp),
+    sumState(amount)
+FROM hft_dashboard.historical_trades
+GROUP BY symbol, candle_time;
 --
 -- Repeat with the appropriate interval and MV name for each timeframe.

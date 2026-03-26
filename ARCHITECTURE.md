@@ -293,7 +293,7 @@ If two ticks arrive in the same 100ms window, only the most recent matters for d
 
 **React batching guarantees atomic commits.** React 19 batches all state updates triggered within a single synchronous call. The `updatePrice` Zustand action is a synchronous `set` call inside the `setInterval` callback — React processes all resulting selector notifications in one pass and commits a single new DOM snapshot. Components cannot observe a half-updated store.
 
-**Partial merge prevents false zeroes.** A WebSocket message may include only `{price, volume}` and omit `change_1h`. Writing `change_1h: undefined` to the store would overwrite the last known value, causing the ticker to show `— 0.00%` until the next message includes it. The merge only sets keys that are present in the incoming message — absent keys are never written, so the store retains the last known value indefinitely.
+**Partial merge prevents false zeroes.** A WebSocket message may include only `{price, volume}` and omit `change_1h`. Writing `change_1h: undefined` (or `BigNumber(0)` from a `null`) to the store would overwrite the last known value, causing the ticker to show `▲ 0.00%` until the next real poll. Two guards prevent this: (1) Rust omits the field entirely when `None` via `skip_serializing_if`, so `raw.change_1h` is `undefined` in JS; (2) the frontend guard is `!= null` (catches both `null` and `undefined`). Absent keys are never written to the partial, so the store retains the last known value indefinitely.
 
 **Referential stability for memoized components.** When a tick updates `price` but the message contains no `bbo` key, the `bbo` object in the store is not replaced — the same object reference survives the merge. Zustand compares selector return values by reference. `OrderBook`'s selector returns the same `bbo` reference → Zustand does not notify `OrderBook` → `React.memo` does not schedule a re-render. This is why granular selectors (`prices[symbol]?.bbo`) are used instead of selecting the entire `prices[symbol]` object.
 
@@ -683,7 +683,8 @@ ORDER BY (user_id, symbol)
 | Tick INSERT (batched) | fpga-hft-data-generator | `hft_dashboard.historical_trades` | Buffered, flush every 1s or 1000 rows |
 | Candle INSERT | fpga-hft-data-generator | `hft_dashboard.market_ohlc` | On minute boundary, per symbol |
 | MV population | ClickHouse (automatic) | `historical_trades_mv_*` | Triggered by every INSERT to `historical_trades` |
-| 1h/24h change poll | fpga-hft-data-generator | `hft_dashboard.historical_trades` | `SELECT price ... ORDER BY timestamp ASC LIMIT 1` every 5s |
+| 1h change poll | fpga-hft-data-generator | `hft_dashboard.historical_trades` | `SELECT price ... WHERE timestamp <= now()-1h ORDER BY timestamp DESC LIMIT 1` every 5s |
+| 24h change poll | fpga-hft-data-generator | `hft_dashboard.market_ohlc FINAL` | `SELECT close ... WHERE candle_time <= now()-1d ORDER BY candle_time DESC LIMIT 1` every 5s |
 | OHLCV read | fpga-hft-data-generator | `hft_dashboard.market_ohlc` / MVs | On `GET /api/v1/ohlcv/{symbol}?interval=` |
 | Candle backfill | fpga-hft-data-generator | `hft_dashboard.market_ohlc` | INSERT...SELECT on startup |
 | User register | exchange-sim | `exchange.users` | INSERT new row |
@@ -771,7 +772,7 @@ Monthly partitions on `historical_trades` and `exchange.orders` mean queries wit
 - **Account fetch error handling:** Inline amber banner with retry button when `/api/v1/account` fails.
 - **TradeInterface refactor:** Thin shell + `OrderFormColumn` (shared buy/sell column) + `useOrderForm` hook + `AlertsTab` + `OrderHistoryPanel` components.
 - **TypeScript strict compliance:** All WebSocket message fields typed via `WsMessage` interface; `toBN` uses type guards; no `any` casts in the data pipeline; optional fields only written to partials when present.
-- **1h/24h change fix:** `change_1h` and `change_24h` fields are only written to the partial update when the raw WebSocket message includes them, preventing spread-merge from overwriting existing store values with `undefined` on non-change ticks. TopTickerBar renders `—` when the value is absent rather than `▼ 0.00%`.
+- **1h/24h change fix:** `change_1h` and `change_24h` carry `skip_serializing_if = "Option::is_none"` in Rust — absent from JSON when not yet polled. Frontend guard changed from `!== undefined` to `!= null` to also block explicit `null`. Together these ensure the store is never overwritten with a spurious zero, and `TopTickerBar` renders `—` until a real polled value arrives.
 - **Dark HFT terminal UI:** Tailwind + custom CSS, flash animations on price change, responsive 3-column layout.
 - **ClickHouse schema:** Trades, OHLC, metrics tables with compression, TTL, and materialized views (1m + 5m/15m/1h/1d).
 - **Dev proxy:** Vite proxies `/api/v1/ohlcv` and `/v1/feed` to the HFT gateway, eliminating browser CORS errors in development.
