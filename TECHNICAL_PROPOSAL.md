@@ -3,8 +3,12 @@
 A comprehensive technical reference covering all three services that form the Bull Tech
 high-frequency trading dashboard: the synthetic market data generator, the exchange
 simulator, and the React frontend. Each section follows a consistent structure — purpose,
-architecture, technology choices, security, and known limitations — so the document reads
-as a unified proposal rather than three stapled README files.
+architecture, technology choices, security, and known limitations.
+<br>
+
+Live Demo: https://bull-tech-dashboard.vercel.app/
+
+The dashboard is fully responsive and optimized for both desktop and mobile viewing.
 
 ---
 
